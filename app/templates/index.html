@@ -5,18 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SRE Finance Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f4f7f9; }
+        body { background-color: #f4f7f9; min-height: 100vh; display: flex; flex-direction: column; }
         .hero-section { background: #004a99; color: white; padding: 40px 0; margin-bottom: 30px; border-bottom: 5px solid #00d4ff; }
         .devops-card { background: #fff; border-left: 5px solid #28a745; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .table-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .table-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 1; }
         .badge-step { font-size: 0.9em; background: #e9ecef; color: #495057; padding: 5px 10px; border-radius: 20px; margin-right: 5px; }
+        footer { background: #212529; color: #ced4da; padding: 20px 0; margin-top: auto; }
     </style>
 </head>
 <body>
 
 <div class="hero-section text-center">
-    <h1><i class="bi bi-shield-lock"></i> Internal Finance Portal</h1>
+    <h1><i class="bi bi-cpu-fill"></i> Internal Finance Portal</h1>
     <p class="lead">Ansible Auto-Deploy | Docker Containerized | GitHub Actions CI/CD</p>
     <div class="container mt-3">
         <span class="badge-step">1. Infrastructure (Terraform)</span> → 
@@ -25,44 +27,46 @@
     </div>
 </div>
 
-<div class="container">
+<div class="container mb-5">
     <div class="row">
         <div class="col-md-4 mb-4">
-            <div class="devops-card p-4">
-                <h4 class="text-success">🚀 Deployment Flow</h4>
-                <p class="small text-muted">How this page reached you:</p>
+            <div class="devops-card p-4 h-100">
+                <h4 class="text-success"><i class="bi bi-rocket-takeoff"></i> Deployment Flow</h4>
+                <p class="small text-muted">Pipeline Traceability:</p>
                 <ul class="list-unstyled small">
-                    <li>✅ <b>Terraform:</b> Provisioned 3 EC2 nodes & ALB.</li>
-                    <li>✅ <b>Ansible:</b> Configured Docker & SSL on nodes.</li>
-                    <li>✅ <b>Docker:</b> Port-mapped 5000:5000 for this Flask app.</li>
-                    <li>✅ <b>ALB:</b> Health-checked targets every 20s.</li>
+                    <li>✅ <b>Terraform:</b> 3 EC2 Nodes + ALB</li>
+                    <li>✅ <b>Ansible:</b> Docker Engine Config</li>
+                    <li>✅ <b>Docker:</b> Finance Image Build</li>
+                    <li>✅ <b>ALB:</b> Round-Robin Traffic</li>
                 </ul>
                 <hr>
-                <p class="small font-italic">"Seamlessly handling the handover from Infrastructure-as-Code to Configuration Management."</p>
+                <div class="alert alert-info py-2 small">
+                    <strong>SRE Note:</strong> High Availability is achieved across multiple AZs.
+                </div>
             </div>
         </div>
 
         <div class="col-md-8">
             <div class="table-container">
                 <p class="float-end text-muted">User: <strong>{{ user_name }}</strong></p>
-                <h3>Calculate Savings Projection</h3>
+                <h3><i class="bi bi-calculator"></i> Savings Projection</h3>
                 <form method="POST" class="row g-3 mt-2">
                     <div class="col-md-6">
                         <label class="form-label">Reason / Goal</label>
-                        <input type="text" name="reason_goal" class="form-control" placeholder="e.g. Retirement" required>
+                        <input type="text" name="reason_goal" class="form-control" placeholder="e.g. Broadridge Stocks" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Monthly Amount ($)</label>
                         <input type="number" name="monthly_amount" class="form-control" required>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">Calculate</button>
+                        <button type="submit" class="btn btn-primary w-100">Go</button>
                     </div>
                 </form>
 
                 <hr class="my-4">
 
-                <h3>History</h3>
+                <h3><i class="bi bi-journal-text"></i> History</h3>
                 <table class="table table-hover mt-3">
                     <thead class="table-dark">
                         <tr>
@@ -85,6 +89,31 @@
         </div>
     </div>
 </div>
+
+<footer>
+    <div class="container text-center">
+        <div class="row">
+            <div class="col-md-4">
+                <span class="text-success">●</span> System: <strong>Operational</strong>
+            </div>
+            <div class="col-md-4">
+                <i class="bi bi-node-plus"></i> Active Node: <code class="text-info">{{ server_id }}</code>
+            </div>
+            <div class="col-md-4">
+                <i class="bi bi-clock"></i> <span id="utc-time"></span>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('utc-time').innerHTML = now.toISOString().split('T')[1].split('.')[0] + " UTC";
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+</script>
 
 </body>
 </html>
