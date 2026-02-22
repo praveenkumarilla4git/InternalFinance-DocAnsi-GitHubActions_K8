@@ -12,23 +12,24 @@ provider "aws" {
   secret_key = var.aws_secret_key
 }
 
-# --- Security Group ---
-resource "aws_security_group" "finance_docker_sg" {
-  name        = "finance-docker-sg"
-  description = "Allow SSH and Port 5000"
-
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+# --- Data Sources (To fetch Default VPC info) ---
+data "aws_vpc" "default" { default = true }
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
+}
+
+# --- Security Group 1: The Load Balancer (The Gatekeeper) ---
+resource "aws_security_group" "alb_sg" {
+  name        = "finance-alb-sg"
+  description = "Public HTTP access for the ALB"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "Flask App"
-    from_port   = 5000
-    to_port     = 5000
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -41,18 +42,46 @@ resource "aws_security_group" "finance_docker_sg" {
   }
 }
 
-# --- EC2 Instances (Scaled to 3) ---
+# --- Security Group 2: The EC2 Instances (The Workers) ---
+resource "aws_security_group" "finance_docker_sg" {
+  name        = "finance-docker-sg"
+  description = "Restricted access: SSH from world, App from ALB only"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description     = "Flask App from ALB"
+    from_port       = 5000
+    to_port         = 5000
+    protocol        = "tcp"
+    # SRE BEST PRACTICE: Only allow traffic coming from the ALB Security Group
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# --- EC2 Instances ---
 resource "aws_instance" "finance_server" {
-  # 1. Creates multiple copies based on the variable
-  count         = var.instance_count
-  
-  ami           = "ami-068c0051b15cdb816" # Amazon Linux 2023 (US-East-1)
-  instance_type = "t3.micro"
-  key_name      = var.key_name
-  security_groups = [aws_security_group.finance_docker_sg.name]
+  count                  = var.instance_count
+  ami                    = "ami-068c0051b15cdb816" 
+  instance_type          = "t3.micro"
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.finance_docker_sg.id]
 
   tags = {
-    # 2. Names them Finance-Node-1, Finance-Node-2, etc.
     Name = "Finance-Node-${count.index + 1}"
   }
 
@@ -67,12 +96,54 @@ resource "aws_instance" "finance_server" {
               EOF
 }
 
-# --- Generate Ansible Inventory (Dynamic Loop) ---
+# --- Load Balancer Components ---
+
+resource "aws_lb" "finance_alb" {
+  name               = "finance-app-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = data.aws_subnets.default.ids
+}
+
+resource "aws_lb_target_group" "finance_tg" {
+  name     = "finance-app-tg"
+  port     = 5000
+  protocol = "HTTP"
+  vpc_id   = data.aws_vpc.default.id
+
+  health_check {
+    path                = "/"
+    port                = "5000"
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout             = 5
+    interval            = 10 # Aggressive health check for faster demo feedback
+  }
+}
+
+resource "aws_lb_listener" "finance_listener" {
+  load_balancer_arn = aws_lb.finance_alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.finance_tg.arn
+  }
+}
+
+resource "aws_lb_target_group_attachment" "tg_attach" {
+  count            = var.instance_count
+  target_group_arn = aws_lb_target_group.finance_tg.arn
+  target_id        = aws_instance.finance_server[count.index].id
+  port             = 5000
+}
+
+# --- Dynamic Ansible Inventory ---
 resource "local_file" "ansible_inventory" {
   filename = "${path.module}/../Ansible/hosts.ini"
-  
-  # 3. Loops through ALL created instances to list their IPs
-  content = <<EOT
+  content  = <<EOT
 [webserver]
 %{ for ip in aws_instance.finance_server.*.public_ip ~}
 ${ip} ansible_user=ec2-user ansible_ssh_private_key_file=key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'

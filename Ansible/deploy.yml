@@ -6,7 +6,7 @@
     # ---------------------------------------------------------
     # IMPORTANT: This must match your GitHub Repo URL exactly
     # ---------------------------------------------------------
-    repo_url: "https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions.git"
+    repo_url: "https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git"
     project_dir: "/home/ec2-user/finance-app-cicd"
     image_name: "finance-app-v2"
 
