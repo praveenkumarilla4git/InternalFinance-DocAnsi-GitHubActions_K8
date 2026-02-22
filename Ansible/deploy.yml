@@ -4,7 +4,7 @@
   vars:
     project_dir: "/home/ec2-user/app"
     image_name: "finance-app-v2"
-    container_name: "finance-app" # Crucial for cleanup
+    container_name: "finance-app" # This MUST match the name in your User Data
 
   tasks:
     - name: Pull latest code
@@ -14,12 +14,14 @@
         version: main
         force: yes
 
-    - name: Cleanup existing container
-      shell: "docker stop {{ container_name }} && docker rm {{ container_name }} || true"
-
-    - name: Build and Run
-      shell: |
-        docker build -t {{ image_name }} .
-        docker run -d --name {{ container_name }} -p 5000:5000 {{ image_name }}
+    - name: Build Docker Image
+      shell: "docker build -t {{ image_name }} ."
       args:
         chdir: "{{ project_dir }}"
+
+    - name: Cleanup existing container
+      # We use '|| true' so the script doesn't crash if the container is already gone
+      shell: "docker stop {{ container_name }} && docker rm {{ container_name }} || true"
+
+    - name: Run New Docker Container
+      shell: "docker run -d --name {{ container_name }} -p 5000:5000 {{ image_name }}"
