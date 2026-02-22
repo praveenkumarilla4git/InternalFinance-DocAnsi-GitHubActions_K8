@@ -17,3 +17,10 @@ output "server_ips" {
   description = "Raw list of public IPs for legacy script ingestion"
   value       = aws_instance.finance_server.*.public_ip
 }
+
+
+# 4. The "One Ring to Rule Them All" - The Single entry point for the app
+output "alb_dns_name" {
+  description = "The FINAL clickable URL for your application"
+  value       = "http://${aws_lb.finance_alb.dns_name}"
+}
