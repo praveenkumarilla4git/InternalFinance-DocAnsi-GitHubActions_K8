@@ -1,0 +1,42 @@
+name: Deploy Finance App Automated
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Run Ansible Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout Code
+      # This downloads your repo, including the hosts.ini file you are about to push
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Setup Python (Required for Ansible)
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      # 3. Install Ansible
+      - name: Install Ansible
+        run: pip install ansible
+
+      # 4. Create SSH Key File from Secrets
+      # We still need the Key to log in, but we don't need the Host IP anymore!
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      # 5. Run Ansible Playbook
+      # We point it to the 'Ansible/hosts.ini' file that Terraform created
+      - name: Run Ansible Playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          ansible-playbook -i Ansible/hosts.ini Ansible/deploy.yml

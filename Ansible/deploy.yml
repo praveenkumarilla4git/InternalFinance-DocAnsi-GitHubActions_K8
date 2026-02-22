@@ -1,0 +1,56 @@
+---
+- name: Deploy Finance App Automated
+  hosts: webserver
+  become: yes
+  vars:
+    # ---------------------------------------------------------
+    # IMPORTANT: This must match your GitHub Repo URL exactly
+    # ---------------------------------------------------------
+    repo_url: "https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions.git"
+    project_dir: "/home/ec2-user/finance-app-cicd"
+    image_name: "finance-app-v2"
+
+  tasks:
+    # 1. Start Docker
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    # 2. Download Code from GitHub
+    - name: Pull latest code
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ project_dir }}"
+        version: main
+        force: yes
+
+    # 3. Handle requirements.txt
+    - name: Check if requirements.txt exists in app/ folder
+      stat:
+        path: "{{ project_dir }}/app/requirements.txt"
+      register: req_file
+
+    - name: Move requirements.txt to main folder
+      command: mv {{ project_dir }}/app/requirements.txt {{ project_dir }}/
+      when: req_file.stat.exists
+
+    # 4. Stop Old Container
+    - name: Check for running container
+      shell: docker ps -q --filter ancestor={{ image_name }}
+      register: running_container
+      ignore_errors: yes
+
+    - name: Stop and remove existing container
+      shell: docker rm -f {{ running_container.stdout }}
+      when: running_container.stdout != ""
+
+    # 5. Build & Run
+    - name: Build Docker Image
+      shell: "docker build -t {{ image_name }} ."
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Run Docker Container
+      shell: "docker run -d -p 5000:5000 {{ image_name }}"

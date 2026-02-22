@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>Finance Portal</title></head>
+<body style="text-align:center; font-family: sans-serif;">
+    <h2>Internal Finance Portal (Ansible (Auto) Docker GitHub Edition)</h2>
+    <p>Welcome back, <b>{{ user_name }}</b></p>
+    <form method="POST">
+        Reason / Goal: <input type="text" name="reason_goal" required> <br><br>
+        Monthly Amount: <input type="number" name="monthly_amount" required>
+        <button type="submit">Calculate</button>
+    </form>
+    <hr>
+    <h3>Savings Projection History</h3>
+    <table border="1" style="margin: 0 auto;">
+        <tr>
+            <th>ID</th>
+            <th>Reason</th>
+            <th>Annual Projection</th>
+        </tr>
+        {% for row in history %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[3] }}</td>
+            <td>{{ row[2] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

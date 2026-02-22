@@ -1,0 +1,46 @@
+# --- Security (CRITICAL) ---
+*.pem
+*.tfvars
+.env
+.DS_Store
+
+# --- Terraform ---
+# Ignore the .terraform directory (plugins)
+.terraform/
+**/.terraform/*
+
+# Ignore state files (Contains sensitive infrastructure data)
+*.tfstate
+*.tfstate.*
+
+# Ignore crash logs
+crash.log
+
+# --- Python ---
+# Bytecode / Cache
+__pycache__/
+*.pyc
+
+# Virtual Environments
+venv/
+env/
+
+# Distribution / Build
+build/
+dist/
+*.egg-info/
+
+# --- Application Data ---
+# Ignore the local database (we don't want to overwrite the server's DB)
+finance.db
+
+# --- IDE Settings ---
+.vscode/
+.idea/
+
+*.pem
+*.tfstate
+*.tfstate.backup
+.terraform/
+finance.db
+Ops-Infra/.terraform.lock.hcl
