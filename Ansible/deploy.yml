@@ -1,10 +1,11 @@
+---
 - name: Deploy Finance App
   hosts: webserver
   become: yes
   vars:
     project_dir: "/home/ec2-user/app"
     image_name: "finance-app-v2"
-    container_name: "finance-app" # This MUST match the name in your User Data
+    container_name: "finance-app"
 
   tasks:
     - name: Pull latest code
@@ -19,9 +20,14 @@
       args:
         chdir: "{{ project_dir }}"
 
-    - name: Cleanup existing container
-      # We use '|| true' so the script doesn't crash if the container is already gone
-      shell: "docker stop {{ container_name }} && docker rm {{ container_name }} || true"
+    - name: Force Cleanup existing container
+      # Using a multi-line shell block ensures both commands are attempted
+      shell: |
+        docker stop {{ container_name }} || true
+        docker rm {{ container_name }} || true
+      ignore_errors: yes
 
     - name: Run New Docker Container
       shell: "docker run -d --name {{ container_name }} -p 5000:5000 {{ image_name }}"
+      args:
+        chdir: "{{ project_dir }}"
