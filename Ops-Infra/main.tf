@@ -76,19 +76,25 @@ resource "aws_security_group" "finance_docker_sg" {
 # --- EC2 Instances ---
 resource "aws_instance" "finance_server" {
   count                  = var.instance_count
-  ami                    = "ami-068c0051b15cdb816" 
+  ami                    = "ami-068c0051b15cdb816"
   instance_type          = "t3.micro"
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.finance_docker_sg.id]
 
+  # --- THIS IS THE MAGIC LINE ---
+  # It takes the list of 6 subnets and assigns:
+  # Instance 1 -> Subnet 1 (AZ-a)
+  # Instance 2 -> Subnet 2 (AZ-b)
+  # Instance 3 -> Subnet 3 (AZ-c)
+  subnet_id = data.aws_subnets.default.ids[count.index % length(data.aws_subnets.default.ids)]
+
   tags = {
     Name = "Finance-Node-${count.index + 1}"
   }
-
+  
   user_data = <<-EOF
               #!/bin/bash
               dnf update -y
-              dnf remove -y podman podman-docker
               dnf install -y docker git
               service docker start
               systemctl enable docker
