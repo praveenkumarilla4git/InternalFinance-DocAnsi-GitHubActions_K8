@@ -12,7 +12,7 @@ provider "aws" {
   secret_key = var.aws_secret_key
 }
 
-# --- Data Sources (To fetch Default VPC info) ---
+# --- Data Sources ---
 data "aws_vpc" "default" { default = true }
 data "aws_subnets" "default" {
   filter {
@@ -21,7 +21,7 @@ data "aws_subnets" "default" {
   }
 }
 
-# --- Security Group 1: The Load Balancer (The Gatekeeper) ---
+# --- Security Groups ---
 resource "aws_security_group" "alb_sg" {
   name        = "finance-alb-sg"
   description = "Public HTTP access for the ALB"
@@ -42,7 +42,6 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# --- Security Group 2: The EC2 Instances (The Workers) ---
 resource "aws_security_group" "finance_docker_sg" {
   name        = "finance-docker-sg"
   description = "Restricted access: SSH from world, App from ALB only"
@@ -61,7 +60,6 @@ resource "aws_security_group" "finance_docker_sg" {
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
-    # SRE BEST PRACTICE: Only allow traffic coming from the ALB Security Group
     security_groups = [aws_security_group.alb_sg.id]
   }
 
@@ -81,11 +79,7 @@ resource "aws_instance" "finance_server" {
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.finance_docker_sg.id]
 
-  # --- THIS IS THE MAGIC LINE ---
-  # It takes the list of 6 subnets and assigns:
-  # Instance 1 -> Subnet 1 (AZ-a)
-  # Instance 2 -> Subnet 2 (AZ-b)
-  # Instance 3 -> Subnet 3 (AZ-c)
+  # Multi-AZ Distribution
   subnet_id = data.aws_subnets.default.ids[count.index % length(data.aws_subnets.default.ids)]
 
   tags = {
@@ -94,29 +88,28 @@ resource "aws_instance" "finance_server" {
   
   user_data = <<-EOF
               #!/bin/bash
-              # 1. Install Docker
+              # 1. System Setup
               dnf update -y
               dnf install -y docker git
               service docker start
               systemctl enable docker
               usermod -a -G docker ec2-user
 
-              # 2. Immediate Deployment (The Fix)
-              # This pulls your code BEFORE Ansible even touches it
+              # 2. Self-Bootstrap Application
               cd /home/ec2-user
-              git clone https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git app
+              if [ ! -d "app" ]; then
+                git clone https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git app
+              fi
               cd app
-              
-              # 3. Start the app (Assuming you have your Dockerfile ready)
-              # If you haven't dockerized yet, we can use a simple python command here:
-              # Finalizing the auto-start
-              docker build -t finance-app .
-              docker run -d -p 5000:5000 finance-app
+              git pull origin main
+
+              # 3. Docker Launch (Named container for Ansible to find/replace later)
+              docker build -t finance-app-v2 .
+              docker run -d --name finance-app -p 5000:5000 finance-app-v2
               EOF
 }
 
 # --- Load Balancer Components ---
-
 resource "aws_lb" "finance_alb" {
   name               = "finance-app-alb"
   internal           = false
@@ -131,13 +124,15 @@ resource "aws_lb_target_group" "finance_tg" {
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
 
+  # --- UPDATED HEALTH CHECK TWEAKS ---
   health_check {
     path                = "/"
     port                = "5000"
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 3    # Give Docker extra time to build/start
     timeout             = 5
-    interval            = 10 # Aggressive health check for faster demo feedback
+    interval            = 20   # Longer interval prevents ALB from giving up too fast
+    matcher             = "200-399" # Accept 200 (OK) and 302 (Redirect)
   }
 }
 
