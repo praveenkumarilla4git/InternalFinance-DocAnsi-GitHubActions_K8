@@ -2,18 +2,18 @@ from flask import Flask, render_template, request
 import sqlite3
 import core
 import schema  # Runs the DB setup immediately
-import socket  # Import for SRE Node Identification
+import socket  # Required for SRE Node Identification
 
 app = Flask(__name__)
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     estimated_annual = 0
-    current_user = "Praveen"
+    # UPDATED: Your full name for the portfolio
+    current_user = "Praveen Kumar Illa"
     reason_text = ""
     
-    # 🕵️ SRE Insight: Identify which specific node is serving this request
-    # In Docker, this returns the Container ID.
+    # Identify which specific container/node is serving the request
     node_id = socket.gethostname() 
 
     if request.method == "POST":
@@ -34,14 +34,13 @@ def home():
         except Exception as e:
             print(f"Error during POST: {e}")
 
-    # Read History
+    # Read History (Latest entries first)
     connection = sqlite3.connect("finance.db")
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM users_data ORDER BY id DESC")
     db_data = cursor.fetchall()
     connection.close()
 
-    # Pass 'server_id' to index.html
     return render_template("index.html", 
                            user_name=current_user, 
                            money=estimated_annual, 
@@ -50,5 +49,5 @@ def home():
                            server_id=node_id)
 
 if __name__ == "__main__":
-    # HOST 0.0.0.0 IS REQUIRED FOR DOCKER/CLOUD ACCESS
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Host 0.0.0.0 is critical for Docker/ALB routing
+    app.run(debug=False, host="0.0.0.0", port=5000)

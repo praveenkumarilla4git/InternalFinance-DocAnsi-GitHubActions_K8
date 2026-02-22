@@ -3,61 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRE Finance Portal</title>
+    <title>SRE Finance Portal | Praveen Kumar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
         body { background-color: #f4f7f9; min-height: 100vh; display: flex; flex-direction: column; }
-        .hero-section { background: #004a99; color: white; padding: 40px 0; margin-bottom: 30px; border-bottom: 5px solid #00d4ff; }
+        .hero-section { background: #004a99; color: white; padding: 40px 0; border-bottom: 5px solid #00d4ff; }
         .devops-card { background: #fff; border-left: 5px solid #28a745; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .table-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 1; }
-        .badge-step { font-size: 0.9em; background: #e9ecef; color: #495057; padding: 5px 10px; border-radius: 20px; margin-right: 5px; }
-        footer { background: #212529; color: #ced4da; padding: 20px 0; margin-top: auto; }
+        .table-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .badge-step { font-size: 0.85em; background: #e9ecef; color: #495057; padding: 5px 12px; border-radius: 20px; }
+        footer { background: #212529; color: #ced4da; padding: 15px 0; margin-top: auto; font-size: 0.9rem; }
+        .text-info-sre { color: #00d4ff !important; }
     </style>
 </head>
 <body>
 
 <div class="hero-section text-center">
-    <h1><i class="bi bi-cpu-fill"></i> Internal Finance Portal</h1>
-    <p class="lead">Ansible Auto-Deploy | Docker Containerized | GitHub Actions CI/CD</p>
-    <div class="container mt-3">
-        <span class="badge-step">1. Infrastructure (Terraform)</span> → 
-        <span class="badge-step">2. Config (Ansible)</span> → 
-        <span class="badge-step">3. Package (Docker)</span>
+    <h1><i class="bi bi-cpu-fill"></i> Global Finance Portal</h1>
+    <p class="lead text-light">Terraform | Ansible | Docker | GitHub Actions</p>
+    <div class="container mt-2">
+        <span class="badge-step">IaC</span> → <span class="badge-step">Config</span> → <span class="badge-step">Container</span>
     </div>
 </div>
 
-<div class="container mb-5">
+<div class="container mt-4 mb-5">
     <div class="row">
         <div class="col-md-4 mb-4">
             <div class="devops-card p-4 h-100">
-                <h4 class="text-success"><i class="bi bi-rocket-takeoff"></i> Deployment Flow</h4>
-                <p class="small text-muted">Pipeline Traceability:</p>
-                <ul class="list-unstyled small">
-                    <li>✅ <b>Terraform:</b> 3 EC2 Nodes + ALB</li>
-                    <li>✅ <b>Ansible:</b> Docker Engine Config</li>
-                    <li>✅ <b>Docker:</b> Finance Image Build</li>
-                    <li>✅ <b>ALB:</b> Round-Robin Traffic</li>
+                <h5 class="text-success"><i class="bi bi-rocket-takeoff"></i> Deployment Flow</h5>
+                <ul class="list-unstyled small mt-3">
+                    <li class="mb-2">✅ <b>Terraform:</b> 3-Node Multi-AZ Cluster</li>
+                    <li class="mb-2">✅ <b>Ansible:</b> Idempotent Docker Config</li>
+                    <li class="mb-2">✅ <b>Docker:</b> Microservice Isolation</li>
+                    <li class="mb-2">✅ <b>ALB:</b> Layer-7 Load Balancing</li>
                 </ul>
                 <hr>
-                <div class="alert alert-info py-2 small">
-                    <strong>SRE Note:</strong> High Availability is achieved across multiple AZs.
-                </div>
+                <p class="small text-muted mb-0"><em>"Scalable architecture designed for high availability."</em></p>
             </div>
         </div>
 
         <div class="col-md-8">
             <div class="table-container">
-                <p class="float-end text-muted">User: <strong>{{ user_name }}</strong></p>
-                <h3><i class="bi bi-calculator"></i> Savings Projection</h3>
+                <p class="float-end text-muted small">Lead SRE: <strong>{{ user_name }}</strong></p>
+                <h3><i class="bi bi-calculator"></i> Savings Projection (INR)</h3>
+                
                 <form method="POST" class="row g-3 mt-2">
                     <div class="col-md-6">
                         <label class="form-label">Reason / Goal</label>
                         <input type="text" name="reason_goal" class="form-control" placeholder="e.g. Broadridge Stocks" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Monthly Amount ($)</label>
-                        <input type="number" name="monthly_amount" class="form-control" required>
+                        <label class="form-label">Monthly Amount (₹)</label>
+                        <input type="number" name="monthly_amount" class="form-control" placeholder="50000" required>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100">Go</button>
@@ -66,53 +63,63 @@
 
                 <hr class="my-4">
 
-                <h3><i class="bi bi-journal-text"></i> History</h3>
-                <table class="table table-hover mt-3">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ID</th>
-                            <th>Reason</th>
-                            <th>Annual Projection</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in history %}
-                        <tr>
-                            <td>{{ row[0] }}</td>
-                            <td>{{ row[3] }}</td>
-                            <td><span class="badge bg-success">${{ row[2] }}</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <h5><i class="bi bi-journal-text"></i> Projection History</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover mt-2">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Reason</th>
+                                <th>Annual (₹)</th>
+                                <th>Annual (USD)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in history %}
+                            <tr>
+                                <td>{{ row[3] }}</td>
+                                <td class="fw-bold">₹{{ "{:,.0f}".format(row[2]) }}</td>
+                                <td class="text-muted small">${{ "{:,.2f}".format(row[2] / 83.5) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+
+
 <footer>
     <div class="container text-center">
-        <div class="row">
+        <div class="row align-items-center">
             <div class="col-md-4">
-                <span class="text-success">●</span> System: <strong>Operational</strong>
+                <span class="text-success">●</span> Status: <strong>Operational</strong>
             </div>
-            <div class="col-md-4">
-                <i class="bi bi-node-plus"></i> Active Node: <code class="text-info">{{ server_id }}</code>
+            <div class="col-md-4 border-start border-secondary">
+                <i class="bi bi-node-plus"></i> Node ID: <code class="text-info-sre">{{ server_id }}</code>
             </div>
-            <div class="col-md-4">
-                <i class="bi bi-clock"></i> <span id="utc-time"></span>
+            <div class="col-md-4 border-start border-secondary">
+                <div class="d-flex justify-content-center gap-3">
+                    <span><strong>EST:</strong> <span id="est-time"></span></span>
+                    <span><strong>IST:</strong> <span id="ist-time"></span></span>
+                </div>
             </div>
         </div>
     </div>
 </footer>
 
 <script>
-    function updateTime() {
+    function updateClocks() {
         const now = new Date();
-        document.getElementById('utc-time').innerHTML = now.toISOString().split('T')[1].split('.')[0] + " UTC";
+        const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        
+        document.getElementById('est-time').innerHTML = now.toLocaleTimeString("en-US", { ...options, timeZone: "America/New_York" });
+        document.getElementById('ist-time').innerHTML = now.toLocaleTimeString("en-US", { ...options, timeZone: "Asia/Kolkata" });
     }
-    setInterval(updateTime, 1000);
-    updateTime();
+    setInterval(updateClocks, 1000);
+    updateClocks();
 </script>
 
 </body>
