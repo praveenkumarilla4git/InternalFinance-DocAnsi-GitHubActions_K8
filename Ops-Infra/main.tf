@@ -94,11 +94,24 @@ resource "aws_instance" "finance_server" {
   
   user_data = <<-EOF
               #!/bin/bash
+              # 1. Install Docker
               dnf update -y
               dnf install -y docker git
               service docker start
               systemctl enable docker
               usermod -a -G docker ec2-user
+
+              # 2. Immediate Deployment (The Fix)
+              # This pulls your code BEFORE Ansible even touches it
+              cd /home/ec2-user
+              git clone https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git app
+              cd app
+              
+              # 3. Start the app (Assuming you have your Dockerfile ready)
+              # If you haven't dockerized yet, we can use a simple python command here:
+              # Finalizing the auto-start
+              docker build -t finance-app .
+              docker run -d -p 5000:5000 finance-app
               EOF
 }
 
