@@ -125,7 +125,8 @@ resource "aws_lb_target_group" "finance_tg" {
   health_check {
     enabled             = true
     interval            = 30
-    path                = var.health_check_path  # Linked to variables.tf
+    # USE THE VARIABLE HERE
+    path                = var.health_check_path 
     port                = "5000"
     healthy_threshold   = 3
     unhealthy_threshold = 3

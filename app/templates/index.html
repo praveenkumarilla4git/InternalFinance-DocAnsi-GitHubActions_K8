@@ -17,6 +17,12 @@
         .text-info-sre { color: #00d4ff !important; }
         .health-btn { transition: 0.3s; text-decoration: none; font-weight: bold; }
         .health-btn:hover { background-color: #218838 !important; transform: scale(1.05); }
+        .pulse { animation: pulse-animation 2s infinite; }
+        @keyframes pulse-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -44,12 +50,19 @@
 
             <div class="sre-card p-4">
                 <h5 class="text-info"><i class="bi bi-shield-pulse"></i> Observability</h5>
-                <p class="small text-muted">The ALB continuously monitors this endpoint to ensure high availability.</p>
+                <p class="small text-muted">Real-time health telemetry from the Application Load Balancer.</p>
+                
                 <a href="/health" target="_blank" class="btn btn-success btn-sm w-100 health-btn">
-                    <i class="bi bi-activity"></i> Check Health JSON
+                    <i class="bi bi-activity"></i> Open Health JSON
                 </a>
+
+                <div id="health-status-ui" class="mt-3 p-2 text-center rounded" style="background: #f8f9fa; border: 1px solid #dee2e6;">
+                    <small class="d-block text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Live Backend Status</small>
+                    <div id="status-spinner" class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span id="status-text" class="ms-1 fw-bold">Connecting...</span>
+                </div>
                 <hr>
-                <p class="small text-muted mb-0"><em>"Automated remediation active via Health Checks."</em></p>
+                <p class="small text-muted mb-0"><em>"Proactive monitoring via ALB Target Groups."</em></p>
             </div>
         </div>
 
@@ -120,6 +133,7 @@
 </footer>
 
 <script>
+    // 1. Clock Logic
     function updateClocks() {
         const now = new Date();
         const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
@@ -128,6 +142,31 @@
     }
     setInterval(updateClocks, 1000);
     updateClocks();
+
+    // 2. Real-time Health Monitor (Detects 503 errors)
+    async function monitorHealth() {
+        const statusText = document.getElementById('status-text');
+        const spinner = document.getElementById('status-spinner');
+        
+        try {
+            const response = await fetch('/health');
+            spinner.classList.add('d-none');
+            
+            if (response.ok) {
+                statusText.innerHTML = '<span class="text-success">HEALTHY</span>';
+            } else if (response.status === 503) {
+                statusText.innerHTML = '<span class="text-danger">503: TARGETS UNHEALTHY</span>';
+            } else {
+                statusText.innerHTML = `<span class="text-warning">STATUS: ${response.status}</span>`;
+            }
+        } catch (error) {
+            spinner.classList.add('d-none');
+            statusText.innerHTML = '<span class="text-danger">ALB TIMEOUT</span>';
+        }
+    }
+    // Check every 5 seconds to help debug your current 503 error
+    setInterval(monitorHealth, 5000);
+    monitorHealth();
 </script>
 
 </body>
