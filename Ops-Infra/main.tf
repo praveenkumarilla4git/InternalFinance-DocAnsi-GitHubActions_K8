@@ -22,7 +22,7 @@ data "aws_subnets" "default" {
   }
 }
 
-# --- Security Groups (SRE Best Practice: Security Group Nesting) ---
+# --- Security Groups ---
 resource "aws_security_group" "alb_sg" {
   name        = "finance-alb-sg"
   description = "Public HTTP access for the ALB"
@@ -45,7 +45,7 @@ resource "aws_security_group" "alb_sg" {
 
 resource "aws_security_group" "finance_docker_sg" {
   name        = "finance-docker-sg"
-  description = "Restricted access: SSH from world, App from ALB only"
+  description = "Restricted access: App from ALB only"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
@@ -61,7 +61,7 @@ resource "aws_security_group" "finance_docker_sg" {
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id] # Allows traffic only from ALB
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   egress {
@@ -72,42 +72,57 @@ resource "aws_security_group" "finance_docker_sg" {
   }
 }
 
-# --- EC2 Instances (Multi-AZ Distribution) ---
-resource "aws_instance" "finance_server" {
-  count                  = var.instance_count
-  ami                    = "ami-068c0051b15cdb816"
-  instance_type          = "t3.micro"
-  key_name               = var.key_name
-  vpc_security_group_ids = [aws_security_group.finance_docker_sg.id]
+# --- Launch Template ---
+resource "aws_launch_template" "finance_lt" {
+  name_prefix   = "finance-app-lt-"
+  image_id      = "ami-068c0051b15cdb816"
+  instance_type = "t3.micro"
+  key_name      = var.key_name
 
-  # Distribute instances across available subnets/zones automatically
-  subnet_id = data.aws_subnets.default.ids[count.index % length(data.aws_subnets.default.ids)]
-
-  tags = {
-    Name = "Finance-Node-${count.index + 1}"
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.finance_docker_sg.id]
   }
-  
-  user_data = <<-EOF
+
+  user_data = base64encode(<<-EOF
               #!/bin/bash
               dnf update -y
               dnf install -y docker git
               service docker start
               systemctl enable docker
               usermod -a -G docker ec2-user
-
               cd /home/ec2-user
-              if [ ! -d "app" ]; then
-                git clone https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git app
-              fi
+              git clone https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git app
               cd app
-              git pull origin main
-
               docker build -t finance-app-v2 .
               docker run -d --name finance-app -p 5000:5000 finance-app-v2
               EOF
+  )
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = { Name = "Finance-ASG-Node" }
+  }
 }
 
-# --- Load Balancer Components ---
+# --- Auto Scaling Group ---
+resource "aws_autoscaling_group" "finance_asg" {
+  desired_capacity    = var.desired_capacity
+  max_size            = var.max_size
+  min_size            = var.min_size
+  target_group_arns   = [aws_lb_target_group.finance_tg.arn]
+  vpc_zone_identifier = data.aws_subnets.default.ids
+
+  launch_template {
+    id      = aws_launch_template.finance_lt.id
+    version = "$Latest"
+  }
+
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+}
+
+# --- Load Balancer ---
 resource "aws_lb" "finance_alb" {
   name               = "finance-app-alb"
   internal           = false
@@ -125,7 +140,6 @@ resource "aws_lb_target_group" "finance_tg" {
   health_check {
     enabled             = true
     interval            = 30
-    # USE THE VARIABLE HERE
     path                = var.health_check_path 
     port                = "5000"
     healthy_threshold   = 3
@@ -146,19 +160,18 @@ resource "aws_lb_listener" "finance_listener" {
   }
 }
 
-resource "aws_lb_target_group_attachment" "tg_attach" {
-  count            = var.instance_count
-  target_group_arn = aws_lb_target_group.finance_tg.arn
-  target_id        = aws_instance.finance_server[count.index].id
-  port             = 5000
+# --- Dynamic Ansible Inventory ---
+data "aws_instances" "asg_nodes" {
+  instance_tags = { Name = "Finance-ASG-Node" }
+  instance_state_names = ["running"]
+  depends_on           = [aws_autoscaling_group.finance_asg]
 }
 
-# --- Dynamic Ansible Inventory (The CI/CD Bridge) ---
 resource "local_file" "ansible_inventory" {
   filename = "${path.module}/../Ansible/hosts.ini"
   content  = <<EOT
 [webserver]
-%{ for ip in aws_instance.finance_server.*.public_ip ~}
+%{ for ip in data.aws_instances.asg_nodes.public_ips ~}
 ${ip} ansible_user=ec2-user ansible_ssh_private_key_file=key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 %{ endfor ~}
 EOT

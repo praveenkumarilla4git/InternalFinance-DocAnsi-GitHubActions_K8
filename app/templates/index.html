@@ -9,20 +9,14 @@
     <style>
         body { background-color: #f4f7f9; min-height: 100vh; display: flex; flex-direction: column; }
         .hero-section { background: #004a99; color: white; padding: 40px 0; border-bottom: 5px solid #00d4ff; }
-        .devops-card { background: #fff; border-left: 5px solid #28a745; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .devops-card { background: #fff; border-left: 5px solid #28a745; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .sre-card { background: #fff; border-left: 5px solid #00d4ff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .table-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .badge-step { font-size: 0.85em; background: #e9ecef; color: #495057; padding: 5px 12px; border-radius: 20px; }
-        footer { background: #212529; color: #ced4da; padding: 15px 0; margin-top: auto; font-size: 0.9rem; }
+        footer { background: #212529; color: #ced4da; padding: 15px 0; margin-top: auto; }
         .text-info-sre { color: #00d4ff !important; }
-        .health-btn { transition: 0.3s; text-decoration: none; font-weight: bold; }
-        .health-btn:hover { background-color: #218838 !important; transform: scale(1.05); }
         .pulse { animation: pulse-animation 2s infinite; }
-        @keyframes pulse-animation {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
+        @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -37,71 +31,42 @@
 
 <div class="container mt-4 mb-5">
     <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="devops-card p-4 mb-4">
+        <div class="col-md-4">
+            <div class="devops-card p-4">
                 <h5 class="text-success"><i class="bi bi-rocket-takeoff"></i> Deployment Flow</h5>
                 <ul class="list-unstyled small mt-3">
-                    <li class="mb-2">✅ <b>Terraform:</b> Multi-AZ Cluster</li>
-                    <li class="mb-2">✅ <b>Ansible:</b> Config Automation</li>
-                    <li class="mb-2">✅ <b>Docker:</b> Service Isolation</li>
-                    <li class="mb-2">✅ <b>ALB:</b> Layer-7 Balancing</li>
+                    <li>✅ <b>Terraform:</b> ASG Cluster</li>
+                    <li>✅ <b>Ansible:</b> Auto-Config</li>
+                    <li>✅ <b>ALB:</b> Routing</li>
                 </ul>
             </div>
-
             <div class="sre-card p-4">
                 <h5 class="text-info"><i class="bi bi-shield-pulse"></i> Observability</h5>
-                <p class="small text-muted">Real-time health telemetry from the Application Load Balancer.</p>
-                
-                <a href="/health" target="_blank" class="btn btn-success btn-sm w-100 health-btn">
-                    <i class="bi bi-activity"></i> Open Health JSON
-                </a>
-
-                <div id="health-status-ui" class="mt-3 p-2 text-center rounded" style="background: #f8f9fa; border: 1px solid #dee2e6;">
-                    <small class="d-block text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Live Backend Status</small>
-                    <div id="status-spinner" class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                    <span id="status-text" class="ms-1 fw-bold">Connecting...</span>
+                <a href="/health" target="_blank" class="btn btn-success btn-sm w-100 mb-3">View Health JSON</a>
+                <div id="health-status-ui" class="p-2 text-center rounded border">
+                    <small class="d-block text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Backend Status</small>
+                    <span id="status-text" class="fw-bold text-primary">Checking...</span>
                 </div>
-                <hr>
-                <p class="small text-muted mb-0"><em>"Proactive monitoring via ALB Target Groups."</em></p>
             </div>
         </div>
-
         <div class="col-md-8">
             <div class="table-container">
                 <p class="float-end text-muted small">Lead SRE: <strong>{{ user_name }}</strong></p>
-                <h3><i class="bi bi-calculator"></i> Savings Projection (INR)</h3>
-                
+                <h3><i class="bi bi-calculator"></i> Savings Projection</h3>
                 <form method="POST" class="row g-3 mt-2">
-                    <div class="col-md-6">
-                        <label class="form-label">Reason / Goal</label>
-                        <input type="text" name="reason_goal" class="form-control" placeholder="e.g. Broadridge Stocks" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Monthly Amount (₹)</label>
-                        <input type="number" name="monthly_amount" class="form-control" placeholder="50000" required>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">Go</button>
-                    </div>
+                    <div class="col-md-6"><input type="text" name="reason_goal" class="form-control" placeholder="Reason" required></div>
+                    <div class="col-md-4"><input type="number" name="monthly_amount" class="form-control" placeholder="Monthly ₹" required></div>
+                    <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Go</button></div>
                 </form>
-
-                <hr class="my-4">
-
-                <h5><i class="bi bi-journal-text"></i> Projection History</h5>
+                <hr>
                 <div class="table-responsive">
-                    <table class="table table-hover mt-2">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Reason</th>
-                                <th>Annual (₹)</th>
-                                <th>Annual (USD)</th>
-                            </tr>
-                        </thead>
+                    <table class="table table-hover">
+                        <thead class="table-dark"><tr><th>Reason</th><th>Annual (₹)</th><th>Annual (USD)</th></tr></thead>
                         <tbody>
                             {% for row in history %}
                             <tr>
                                 <td>{{ row[3] }}</td>
-                                <td class="fw-bold">₹{{ "{:,.0f}".format(row[2]) }}</td>
+                                <td>₹{{ "{:,.0f}".format(row[2]) }}</td>
                                 <td class="text-muted small">${{ "{:,.2f}".format(row[2] / 83.5) }}</td>
                             </tr>
                             {% endfor %}
@@ -115,25 +80,17 @@
 
 <footer>
     <div class="container text-center">
-        <div class="row align-items-center">
-            <div class="col-md-4">
-                <span class="text-success pulse">●</span> Status: <strong class="text-white">Operational</strong>
-            </div>
-            <div class="col-md-4 border-start border-secondary">
-                <i class="bi bi-hdd-network"></i> Active Node: <code class="text-info-sre">{{ server_id }}</code>
-            </div>
-            <div class="col-md-4 border-start border-secondary">
-                <div class="d-flex justify-content-center gap-3">
-                    <span><strong>EST:</strong> <span id="est-time"></span></span>
-                    <span><strong>IST:</strong> <span id="ist-time"></span></span>
-                </div>
+        <div class="row small">
+            <div class="col-md-4"><span class="text-success pulse">●</span> Status: Operational</div>
+            <div class="col-md-4 border-start">Active Node: <code class="text-info-sre">{{ server_id }}</code></div>
+            <div class="col-md-4 border-start">
+                EST: <span id="est-time"></span> | IST: <span id="ist-time"></span>
             </div>
         </div>
     </div>
 </footer>
 
 <script>
-    // 1. Clock Logic
     function updateClocks() {
         const now = new Date();
         const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
@@ -141,33 +98,18 @@
         document.getElementById('ist-time').innerHTML = now.toLocaleTimeString("en-US", { ...options, timeZone: "Asia/Kolkata" });
     }
     setInterval(updateClocks, 1000);
-    updateClocks();
 
-    // 2. Real-time Health Monitor (Detects 503 errors)
     async function monitorHealth() {
         const statusText = document.getElementById('status-text');
-        const spinner = document.getElementById('status-spinner');
-        
         try {
             const response = await fetch('/health');
-            spinner.classList.add('d-none');
-            
-            if (response.ok) {
-                statusText.innerHTML = '<span class="text-success">HEALTHY</span>';
-            } else if (response.status === 503) {
-                statusText.innerHTML = '<span class="text-danger">503: TARGETS UNHEALTHY</span>';
-            } else {
-                statusText.innerHTML = `<span class="text-warning">STATUS: ${response.status}</span>`;
-            }
-        } catch (error) {
-            spinner.classList.add('d-none');
-            statusText.innerHTML = '<span class="text-danger">ALB TIMEOUT</span>';
+            statusText.innerHTML = response.ok ? '<span class="text-success">HEALTHY</span>' : '<span class="text-danger">UNHEALTHY</span>';
+        } catch (e) {
+            statusText.innerHTML = '<span class="text-danger">OFFLINE</span>';
         }
     }
-    // Check every 5 seconds to help debug your current 503 error
     setInterval(monitorHealth, 5000);
     monitorHealth();
 </script>
-
 </body>
 </html>

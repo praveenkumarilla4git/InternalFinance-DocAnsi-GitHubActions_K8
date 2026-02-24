@@ -1,30 +1,42 @@
 variable "aws_region" {
-  default = "us-east-1"
+  description = "The AWS region to deploy resources"
+  default     = "us-east-1"
 }
 
-variable "instance_count" {
-  description = "Number of EC2 instances to deploy"
+variable "desired_capacity" {
+  description = "Number of EC2 instances to maintain"
+  type        = number
   default     = 3
 }
 
+variable "min_size" {
+  description = "Minimum instances for High Availability"
+  type        = number
+  default     = 2
+}
+
+variable "max_size" {
+  description = "Maximum instances for scaling"
+  type        = number
+  default     = 5
+}
+
 variable "key_name" {
-  description = "Name of your existing EC2 Key Pair (without .pem)"
-  default     = "batch3"  # <--- REPLACE THIS
-}
-
-variable "aws_access_key" {
-  description = "AWS Access Key ID"
-  type        = string
-  sensitive   = true  # This hides it from logs
-}
-
-variable "aws_secret_key" {
-  description = "AWS Secret Access Key"
-  type        = string
-  sensitive   = true
+  description = "Name of your existing EC2 Key Pair"
+  default     = "batch3" 
 }
 
 variable "health_check_path" {
-  description = "The endpoint used by the ALB and UI to check system health"
+  description = "SRE observability path"
   default     = "/health"
+}
+
+variable "aws_access_key" {
+  type      = string
+  sensitive = true 
+}
+
+variable "aws_secret_key" {
+  type      = string
+  sensitive = true
 }
