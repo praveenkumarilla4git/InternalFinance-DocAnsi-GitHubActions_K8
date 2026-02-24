@@ -10,10 +10,13 @@
         body { background-color: #f4f7f9; min-height: 100vh; display: flex; flex-direction: column; }
         .hero-section { background: #004a99; color: white; padding: 40px 0; border-bottom: 5px solid #00d4ff; }
         .devops-card { background: #fff; border-left: 5px solid #28a745; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .sre-card { background: #fff; border-left: 5px solid #00d4ff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .table-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .badge-step { font-size: 0.85em; background: #e9ecef; color: #495057; padding: 5px 12px; border-radius: 20px; }
         footer { background: #212529; color: #ced4da; padding: 15px 0; margin-top: auto; font-size: 0.9rem; }
         .text-info-sre { color: #00d4ff !important; }
+        .health-btn { transition: 0.3s; text-decoration: none; font-weight: bold; }
+        .health-btn:hover { background-color: #218838 !important; transform: scale(1.05); }
     </style>
 </head>
 <body>
@@ -29,16 +32,24 @@
 <div class="container mt-4 mb-5">
     <div class="row">
         <div class="col-md-4 mb-4">
-            <div class="devops-card p-4 h-100">
+            <div class="devops-card p-4 mb-4">
                 <h5 class="text-success"><i class="bi bi-rocket-takeoff"></i> Deployment Flow</h5>
                 <ul class="list-unstyled small mt-3">
-                    <li class="mb-2">✅ <b>Terraform:</b> 3-Node Multi-AZ Cluster</li>
-                    <li class="mb-2">✅ <b>Ansible:</b> Idempotent Docker Config</li>
-                    <li class="mb-2">✅ <b>Docker:</b> Microservice Isolation</li>
-                    <li class="mb-2">✅ <b>ALB:</b> Layer-7 Load Balancing</li>
+                    <li class="mb-2">✅ <b>Terraform:</b> Multi-AZ Cluster</li>
+                    <li class="mb-2">✅ <b>Ansible:</b> Config Automation</li>
+                    <li class="mb-2">✅ <b>Docker:</b> Service Isolation</li>
+                    <li class="mb-2">✅ <b>ALB:</b> Layer-7 Balancing</li>
                 </ul>
+            </div>
+
+            <div class="sre-card p-4">
+                <h5 class="text-info"><i class="bi bi-shield-pulse"></i> Observability</h5>
+                <p class="small text-muted">The ALB continuously monitors this endpoint to ensure high availability.</p>
+                <a href="/health" target="_blank" class="btn btn-success btn-sm w-100 health-btn">
+                    <i class="bi bi-activity"></i> Check Health JSON
+                </a>
                 <hr>
-                <p class="small text-muted mb-0"><em>"Scalable architecture designed for high availability."</em></p>
+                <p class="small text-muted mb-0"><em>"Automated remediation active via Health Checks."</em></p>
             </div>
         </div>
 
@@ -89,16 +100,14 @@
     </div>
 </div>
 
-
-
 <footer>
     <div class="container text-center">
         <div class="row align-items-center">
             <div class="col-md-4">
-                <span class="text-success">●</span> Status: <strong>Operational</strong>
+                <span class="text-success pulse">●</span> Status: <strong class="text-white">Operational</strong>
             </div>
             <div class="col-md-4 border-start border-secondary">
-                <i class="bi bi-node-plus"></i> Node ID: <code class="text-info-sre">{{ server_id }}</code>
+                <i class="bi bi-hdd-network"></i> Active Node: <code class="text-info-sre">{{ server_id }}</code>
             </div>
             <div class="col-md-4 border-start border-secondary">
                 <div class="d-flex justify-content-center gap-3">
@@ -114,7 +123,6 @@
     function updateClocks() {
         const now = new Date();
         const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-        
         document.getElementById('est-time').innerHTML = now.toLocaleTimeString("en-US", { ...options, timeZone: "America/New_York" });
         document.getElementById('ist-time').innerHTML = now.toLocaleTimeString("en-US", { ...options, timeZone: "Asia/Kolkata" });
     }

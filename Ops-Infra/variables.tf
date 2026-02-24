@@ -23,3 +23,8 @@ variable "aws_secret_key" {
   type        = string
   sensitive   = true
 }
+
+variable "health_check_path" {
+  description = "The endpoint used by the ALB and UI to check system health"
+  default     = "/health"
+}

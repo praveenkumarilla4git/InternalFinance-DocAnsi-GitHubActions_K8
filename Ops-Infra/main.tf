@@ -1,3 +1,4 @@
+# 1. State Management (S3 Backend)
 terraform {
   backend "s3" {
     bucket = "tf-state-praveen2-2025"
@@ -21,7 +22,7 @@ data "aws_subnets" "default" {
   }
 }
 
-# --- Security Groups ---
+# --- Security Groups (SRE Best Practice: Security Group Nesting) ---
 resource "aws_security_group" "alb_sg" {
   name        = "finance-alb-sg"
   description = "Public HTTP access for the ALB"
@@ -60,7 +61,7 @@ resource "aws_security_group" "finance_docker_sg" {
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb_sg.id] # Allows traffic only from ALB
   }
 
   egress {
@@ -71,7 +72,7 @@ resource "aws_security_group" "finance_docker_sg" {
   }
 }
 
-# --- EC2 Instances ---
+# --- EC2 Instances (Multi-AZ Distribution) ---
 resource "aws_instance" "finance_server" {
   count                  = var.instance_count
   ami                    = "ami-068c0051b15cdb816"
@@ -79,7 +80,7 @@ resource "aws_instance" "finance_server" {
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.finance_docker_sg.id]
 
-  # Multi-AZ Distribution
+  # Distribute instances across available subnets/zones automatically
   subnet_id = data.aws_subnets.default.ids[count.index % length(data.aws_subnets.default.ids)]
 
   tags = {
@@ -88,14 +89,12 @@ resource "aws_instance" "finance_server" {
   
   user_data = <<-EOF
               #!/bin/bash
-              # 1. System Setup
               dnf update -y
               dnf install -y docker git
               service docker start
               systemctl enable docker
               usermod -a -G docker ec2-user
 
-              # 2. Self-Bootstrap Application
               cd /home/ec2-user
               if [ ! -d "app" ]; then
                 git clone https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git app
@@ -103,7 +102,6 @@ resource "aws_instance" "finance_server" {
               cd app
               git pull origin main
 
-              # 3. Docker Launch (Named container for Ansible to find/replace later)
               docker build -t finance-app-v2 .
               docker run -d --name finance-app -p 5000:5000 finance-app-v2
               EOF
@@ -124,15 +122,15 @@ resource "aws_lb_target_group" "finance_tg" {
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
 
-  # --- UPDATED HEALTH CHECK TWEAKS ---
   health_check {
-    path                = "/"
+    enabled             = true
+    interval            = 30
+    path                = var.health_check_path  # Linked to variables.tf
     port                = "5000"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3    # Give Docker extra time to build/start
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
     timeout             = 5
-    interval            = 20   # Longer interval prevents ALB from giving up too fast
-    matcher             = "200-399" # Accept 200 (OK) and 302 (Redirect)
+    matcher             = "200"
   }
 }
 
@@ -154,7 +152,7 @@ resource "aws_lb_target_group_attachment" "tg_attach" {
   port             = 5000
 }
 
-# --- Dynamic Ansible Inventory ---
+# --- Dynamic Ansible Inventory (The CI/CD Bridge) ---
 resource "local_file" "ansible_inventory" {
   filename = "${path.module}/../Ansible/hosts.ini"
   content  = <<EOT
