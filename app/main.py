@@ -6,6 +6,22 @@ import socket  # Required for SRE Node Identification
 
 app = Flask(__name__)
 
+# --- SRE HEALTH CHECK ENDPOINT ---
+# This allows the Application Load Balancer (ALB) to verify the app is running.
+@app.route("/health")
+def health_check():
+    try:
+        # Verify the database connection is active
+        connection = sqlite3.connect("finance.db")
+        connection.execute("SELECT 1")
+        connection.close()
+        # Return 200 OK if healthy
+        return {"status": "healthy", "node": socket.gethostname()}, 200
+    except Exception as e:
+        # Return 500 Internal Server Error if something is wrong
+        # This will trigger the ALB to mark the node as 'Unhealthy'
+        return {"status": "unhealthy", "error": str(e)}, 500
+
 @app.route("/", methods=["GET", "POST"])
 def home():
     estimated_annual = 0
@@ -14,6 +30,7 @@ def home():
     reason_text = ""
     
     # Identify which specific container/node is serving the request
+    # This is critical for demonstrating Load Balancing in action
     node_id = socket.gethostname() 
 
     if request.method == "POST":
@@ -49,5 +66,6 @@ def home():
                            server_id=node_id)
 
 if __name__ == "__main__":
-    # Host 0.0.0.0 is critical for Docker/ALB routing
+    # Host 0.0.0.0 is critical for Docker/ALB routing so it listens on all interfaces.
+    # Port 5000 matches your Dockerfile and Terraform Target Group settings.
     app.run(debug=False, host="0.0.0.0", port=5000)
