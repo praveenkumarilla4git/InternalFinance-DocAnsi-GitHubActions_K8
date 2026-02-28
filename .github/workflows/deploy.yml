@@ -1,42 +1,84 @@
-name: Deploy Finance App Automated
+# =============================================================================
+# SRE-Prod-Pipeline: Automated Continuous Delivery (CD)
+# PURPOSE: This workflow bridges the gap between Code (GitHub) and Compute (AWS).
+# It automates the "Build-Scan-Push-Deploy" cycle, removing manual errors.
+# =============================================================================
+
+name: SRE-Prod-Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ] # Triggered on every merge to main to ensure Continuous Delivery
 
 jobs:
-  deploy:
-    name: Run Ansible Deploy
+  # ---------------------------------------------------------------------------
+  # JOB 1: Build and Push (Artifact Creation)
+  # Why: SREs use 'Immutable Artifacts'. We build the image once in a clean 
+  # environment (GitHub Runner) to ensure it's not contaminated by local files.
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build Artifact & Push to ECR
     runs-on: ubuntu-latest
-
+    outputs:
+      image_tag: ${{ github.sha }}
     steps:
-      # 1. Checkout Code
-      # This downloads your repo, including the hosts.ini file you are about to push
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # Pulls your code into the runner
 
-      # 2. Setup Python (Required for Ansible)
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      # Why: Using IAM secrets allows the runner to act on your behalf in AWS.
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          python-version: '3.x'
+          aws-access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3. Install Ansible
-      - name: Install Ansible
-        run: pip install ansible
+      # Why: Docker login ensures we can securely push to your private ECR registry.
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      # 4. Create SSH Key File from Secrets
-      # We still need the Key to log in, but we don't need the Host IP anymore!
-      - name: Setup SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-          chmod 600 key.pem
-
-      # 5. Run Ansible Playbook
-      # We point it to the 'Ansible/hosts.ini' file that Terraform created
-      - name: Run Ansible Playbook
+      # Why: We tag with the Git SHA for traceability and 'latest' for the ASG to pull.
+      # This allows us to know EXACTLY which commit is running in production.
+      - name: Build, Tag, and Push Image
         env:
-          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPO: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          ansible-playbook -i Ansible/hosts.ini Ansible/deploy.yml
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$REPO:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$REPO:$IMAGE_TAG $ECR_REGISTRY/$REPO:latest
+          
+          echo "Pushing images to Amazon ECR..."
+          docker push $ECR_REGISTRY/$REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$REPO:latest
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: Deploy (Infrastructure Refresh)
+  # Why: This step triggers a "Rolling Update". Instead of manually restarting 
+  # servers, AWS ASG will kill old instances and spawn new ones that pull 
+  # the 'latest' image we just pushed.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Trigger Rolling Update
+    needs: build-and-push # Ensures we don't deploy if the build fails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Why: 'start-instance-refresh' is the SRE way to deploy to ASGs.
+      # MinHealthyPercentage: 50 means if you have 2 servers, it replaces 1 at a time.
+      # If the new server fails Health Checks, the refresh stops (Auto-Rollback).
+      - name: Trigger ASG Instance Refresh
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name ${{ secrets.ASG_NAME }} \
+            --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 60}'
+          
+          echo "Instance refresh triggered. Monitor progress in AWS Console."

@@ -1,33 +1,76 @@
 ---
-- name: Deploy Finance App
+# =============================================================================
+# ANSIBLE PLAYBOOK: Production Configuration & Deployment
+# PURPOSE: This playbook ensures that every EC2 instance in the Auto Scaling 
+# Group (ASG) is configured identically and running the verified ECR image.
+# =============================================================================
+
+- name: Configuration Management and ECR Deployment
   hosts: webserver
   become: yes
   vars:
-    project_dir: "/home/ec2-user/app"
-    image_name: "finance-app-v2"
+    # We no longer need project_dir for building; we only need it for logs/configs
     container_name: "finance-app"
+    # The full URI for your North Virginia ECR Repository
+    ecr_image: "770771424969.dkr.ecr.us-east-1.amazonaws.com/finance-app:latest"
+    region: "us-east-1"
 
   tasks:
-    - name: Pull latest code
-      git:
-        repo: "https://github.com/praveenkumarilla4git/InternalFinance-DocAnsi-GitHubActions_K8.git"
-        dest: "{{ project_dir }}"
-        version: main
-        force: yes
+    # -------------------------------------------------------------------------
+    # STEP 1: PREREQUISITES (The 'Runbook' Automation)
+    # Why: SREs ensure the environment is ready before deploying code.
+    # -------------------------------------------------------------------------
+    - name: Ensure Docker service is running and enabled
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
-    - name: Build Docker Image
-      shell: "docker build -t {{ image_name }} ."
-      args:
-        chdir: "{{ project_dir }}"
+    # -------------------------------------------------------------------------
+    # STEP 2: ECR AUTHENTICATION
+    # Why: Even though the EC2 has an IAM Role, Docker itself needs to be 
+    # "logged in" to the private registry to pull the image.
+    # -------------------------------------------------------------------------
+    - name: Authenticate Docker to ECR
+      shell: "aws ecr get-login-password --region {{ region }} | docker login --username AWS --password-stdin {{ ecr_image.split('/')[0] }}"
+      changed_when: false # Prevents Ansible from marking this as a 'change' every time
 
-    - name: Force Cleanup existing container
-      # Using a multi-line shell block ensures both commands are attempted
+    # -------------------------------------------------------------------------
+    # STEP 3: IMAGE SYNC (The 'Immutable' Step)
+    # Why: We pull the pre-built image from ECR. This ensures that every 
+    # server is running the EXACT same bits, regardless of when it joined the ASG.
+    # -------------------------------------------------------------------------
+    - name: Pull latest image from ECR
+      shell: "docker pull {{ ecr_image }}"
+      register: pull_result
+      changed_when: "'Image is up to date' not in pull_result.stdout"
+
+    # -------------------------------------------------------------------------
+    # STEP 4: CLEANUP & RUN (Atomic Deployment)
+    # Why: We stop the old version and start the new one. In a full K8s/ECS 
+    # flow, this is handled by the orchestrator. Here, Ansible handles it.
+    # -------------------------------------------------------------------------
+    - name: Stop and Remove existing container
       shell: |
         docker stop {{ container_name }} || true
         docker rm {{ container_name }} || true
       ignore_errors: yes
+      # Only run cleanup if a new image was actually pulled (Efficiency)
+      when: pull_result.changed
 
-    - name: Run New Docker Container
-      shell: "docker run -d --name {{ container_name }} -p 5000:5000 {{ image_name }}"
-      args:
-        chdir: "{{ project_dir }}"
+    - name: Run Finance App Container from ECR
+      shell: "docker run -d --name {{ container_name }} -p 5000:5000 {{ ecr_image }}"
+      when: pull_result.changed
+
+    # -------------------------------------------------------------------------
+    # STEP 5: VERIFICATION (The 'SRE' Check)
+    # Why: A deployment isn't successful until the service is actually responding.
+    # -------------------------------------------------------------------------
+    - name: Verify application is responding on port 5000
+      uri:
+        url: "http://localhost:5000/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 5
+      delay: 5
